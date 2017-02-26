@@ -1,12 +1,24 @@
 # -*- coding: utf-8 -*-
+#
+# Copyright (C) 2007 Edgewall Software
+# All rights reserved.
+#
+# This software is licensed as described in the file COPYING, which
+# you should have received as part of this distribution. The terms
+# are also available at http://babel.edgewall.org/wiki/License.
+#
+# This software consists of voluntary contributions made by many
+# individuals. For the exact contribution history, see the revision
+# history and logs, available at http://babel.edgewall.org/log/.
 
 from babel.core import *
 
-from django.template import Lexer, TOKEN_TEXT, TOKEN_VAR, TOKEN_BLOCK
+from django.conf import settings
+settings.configure(USE_I18N=True)
+from django.template.base import Lexer, TOKEN_TEXT, TOKEN_VAR, TOKEN_BLOCK
 from django.utils.translation.trans_real import inline_re, block_re, \
                                                 endblock_re, plural_re, \
                                                 constant_re
-
 
 def extract_django(fileobj, keywords, comment_tags, options):
     """Extract messages from Django template files.
@@ -26,11 +38,7 @@ def extract_django(fileobj, keywords, comment_tags, options):
     singular = []
     plural = []
     lineno = 1
-
-    encoding = options.get('encoding', 'utf8')
-    text = fileobj.read().decode(encoding)
-
-    for t in Lexer(text, None).tokenize():
+    for t in Lexer(str(fileobj.read())).tokenize():
         lineno += t.contents.count('\n')
         if intrans:
             if t.token_type == TOKEN_BLOCK:
@@ -38,10 +46,10 @@ def extract_django(fileobj, keywords, comment_tags, options):
                 pluralmatch = plural_re.match(t.contents)
                 if endbmatch:
                     if inplural:
-                        yield lineno, 'ngettext', (unicode(''.join(singular)),
-                                                   unicode(''.join(plural))), []
+                        yield lineno, 'ngettext', (str(''.join(singular)),
+                                                   str(''.join(plural))), []
                     else:
-                        yield lineno, None, unicode(''.join(singular)), []
+                        yield lineno, None, str(''.join(singular)), []
                     intrans = False
                     inplural = False
                     singular = []
@@ -72,25 +80,25 @@ def extract_django(fileobj, keywords, comment_tags, options):
                         g = g.strip('"')
                     elif g[0] == "'":
                         g = g.strip("'")
-                    yield lineno, None, unicode(g), []
+                    yield lineno, None, str(g), []
                 elif bmatch:
                     for fmatch in constant_re.findall(t.contents):
-                        yield lineno, None, unicode(fmatch), []
+                        yield lineno, None, str(fmatch), []
                     intrans = True
                     inplural = False
                     singular = []
                     plural = []
                 elif cmatches:
                     for cmatch in cmatches:
-                        yield lineno, None, unicode(cmatch), []
+                        yield lineno, None, str(cmatch), []
             elif t.token_type == TOKEN_VAR:
                 parts = t.contents.split('|')
                 cmatch = constant_re.match(parts[0])
                 if cmatch:
-                    yield lineno, None, unicode(cmatch.group(1)), []
+                    yield lineno, None, str(cmatch.group(1)), []
                 for p in parts[1:]:
                     if p.find(':_(') >= 0:
-                        p1 = p.split(':',1)[1]
+                        p1 = p.split(':', 1)[1]
                         if p1[0] == '_':
                             p1 = p1[1:]
                         if p1[0] == '(':
@@ -99,4 +107,4 @@ def extract_django(fileobj, keywords, comment_tags, options):
                             p1 = p1.strip("'")
                         elif p1[0] == '"':
                             p1 = p1.strip('"')
-                        yield lineno, None, unicode(p1), []
+                        yield lineno, None, str(p1), []
